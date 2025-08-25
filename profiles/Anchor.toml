@@ -6,14 +6,14 @@ anchor_version = "0.29.0"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
+[programs.gorbchain]
 profiles = "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "https://rpc.gorbchain.xyz"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
