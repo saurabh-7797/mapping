@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.gorbchain]
-profiles = "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ"
+profiles = "GrJrqEtxztquco6Zwg9WfrArYwy5BZwzJ4ce4TfcJLuJ"
 
 [registry]
 url = "https://api.apr.dev"

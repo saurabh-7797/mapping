@@ -25,7 +25,69 @@ const provider = new anchor.AnchorProvider(
 );
 anchor.setProvider(provider);
 
-const program = anchor.workspace.profiles as Program;
+// Use the deployed program ID on Gorbchain
+const programId = new PublicKey("GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ");
+
+// Create program instance directly with the deployed program ID
+const program = new anchor.Program(
+  {
+    version: "0.1.0",
+    name: "profiles", 
+    instructions: [
+      {
+        name: "createProfile",
+        accounts: [
+          { name: "authority", isMut: true, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false },
+          { name: "reverse", isMut: true, isSigner: false },
+          { name: "systemProgram", isMut: false, isSigner: false }
+        ],
+        args: [
+          { name: "username", type: "string" },
+          { name: "bio", type: { option: "string" } },
+          { name: "avatar", type: { option: "string" } },
+          { name: "twitter", type: { option: "string" } },
+          { name: "discord", type: { option: "string" } },
+          { name: "website", type: { option: "string" } }
+        ]
+      }
+    ],
+    accounts: [
+      {
+        name: "Profile",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "authority", type: "publicKey" },
+            { name: "mainAddress", type: "publicKey" },
+            { name: "bump", type: "u8" },
+            { name: "username", type: "string" },
+            { name: "bio", type: "string" },
+            { name: "avatar", type: "string" },
+            { name: "twitter", type: "string" },
+            { name: "discord", type: "string" },
+            { name: "website", type: "string" }
+          ]
+        }
+      },
+      {
+        name: "ReverseLookup",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "username", type: "string" },
+            { name: "bump", type: "u8" }
+          ]
+        }
+      }
+    ],
+    events: [],
+    errors: [],
+    metadata: { address: "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ" }
+  } as any,
+  programId,
+  provider
+);
 
 // Helper functions for PDA derivation
 const profilePda = (username: string) =>
@@ -155,7 +217,7 @@ async function testCreateProfileHappyPath() {
   console.log("✅ Profile created:", tx);
   
   // 4. Verify profile data
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Profile:", {
     username: profile.username,
     authority: profile.authority.toString(),
@@ -168,7 +230,7 @@ async function testCreateProfileHappyPath() {
   });
   
   // 5. Verify reverse lookup
-  const reverse = await program.account.reverseLookup.fetch(reversePDA);
+  const reverse = await program.account.reverseLookup.fetch(reversePDA) as any;
   console.log("Reverse lookup:", reverse.username);
   
   // Verify all data matches input

@@ -25,7 +25,79 @@ const provider = new anchor.AnchorProvider(
 );
 anchor.setProvider(provider);
 
-const program = anchor.workspace.profiles as Program;
+// Use deployed program ID directly with custom IDL
+const programId = new PublicKey("GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ");
+const program = new anchor.Program(
+  // Minimal IDL inline
+  {
+    "version": "0.1.0",
+    "name": "profiles",
+    "instructions": [
+      {
+        "name": "createProfile",
+        "accounts": [
+          {"name": "authority", "isMut": true, "isSigner": true},
+          {"name": "profile", "isMut": true, "isSigner": false},
+          {"name": "reverse", "isMut": true, "isSigner": false},
+          {"name": "systemProgram", "isMut": false, "isSigner": false}
+        ],
+        "args": [
+          {"name": "username", "type": "string"},
+          {"name": "bio", "type": {"option": "string"}},
+          {"name": "avatar", "type": {"option": "string"}},
+          {"name": "twitter", "type": {"option": "string"}},
+          {"name": "discord", "type": {"option": "string"}},
+          {"name": "website", "type": {"option": "string"}}
+        ]
+      },
+      {
+        "name": "setProfileDetails",
+        "accounts": [
+          {"name": "authority", "isMut": false, "isSigner": true},
+          {"name": "profile", "isMut": true, "isSigner": false}
+        ],
+        "args": [
+          {"name": "bio", "type": {"option": "string"}},
+          {"name": "avatar", "type": {"option": "string"}},
+          {"name": "twitter", "type": {"option": "string"}},
+          {"name": "discord", "type": {"option": "string"}},
+          {"name": "website", "type": {"option": "string"}}
+        ]
+      }
+    ],
+    "accounts": [
+      {
+        "name": "Profile",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {"name": "authority", "type": "publicKey"},
+            {"name": "mainAddress", "type": "publicKey"},
+            {"name": "bump", "type": "u8"},
+            {"name": "username", "type": "string"},
+            {"name": "bio", "type": "string"},
+            {"name": "avatar", "type": "string"},
+            {"name": "twitter", "type": "string"},
+            {"name": "discord", "type": "string"},
+            {"name": "website", "type": "string"}
+          ]
+        }
+      },
+      {
+        "name": "ReverseLookup",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {"name": "username", "type": "string"},
+            {"name": "bump", "type": "u8"}
+          ]
+        }
+      }
+    ]
+  },
+  programId,
+  provider
+);
 
 // Helper functions for PDA derivation
 const profilePda = (username: string) =>
@@ -134,7 +206,7 @@ async function testUpdateProfileDetailsHappyPath() {
   const { profilePDA, owner: testOwner } = await createTestProfile();
   
   // Get the actual profile to verify the username
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   
   // Update all fields
@@ -163,7 +235,7 @@ async function testUpdateProfileDetailsHappyPath() {
   console.log("✅ Profile updated:", tx);
   
   // Verify updates
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Updated profile:", {
     bio: profile.bio,
     avatar: profile.avatar,
@@ -222,7 +294,7 @@ async function testUpdateByNonAuthority() {
   }
   
   // Verify profile was not actually changed
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.bio === "hacker bio") {
     throw new Error("Profile was updated by non-authority");
   }
@@ -240,11 +312,11 @@ async function testUpdateWithNullValues() {
   const { profilePDA, owner: testOwner } = await createTestProfile();
   
   // Get the actual profile to verify the username
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   
   // Get current profile state
-  const currentProfile = await program.account.profile.fetch(profilePDA);
+  const currentProfile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Current profile state:", {
     bio: currentProfile.bio,
     avatar: currentProfile.avatar,
@@ -268,7 +340,7 @@ async function testUpdateWithNullValues() {
   console.log("✅ Partial update completed:", tx);
   
   // Verify only bio was updated
-  const updatedProfile = await program.account.profile.fetch(profilePDA);
+  const updatedProfile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Updated profile:", {
     bio: updatedProfile.bio,
     avatar: updatedProfile.avatar,
@@ -303,7 +375,7 @@ async function testUpdateWithEmptyStrings() {
   const { profilePDA, owner: testOwner } = await createTestProfile();
   
   // Get the actual profile to verify the username
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   
   // Update with empty strings
@@ -325,7 +397,7 @@ async function testUpdateWithEmptyStrings() {
   console.log("✅ Empty strings update completed:", tx);
   
   // Verify all fields are now empty
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Profile after empty update:", {
     bio: profile.bio,
     avatar: profile.avatar,

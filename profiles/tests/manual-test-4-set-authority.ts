@@ -25,7 +25,91 @@ const provider = new anchor.AnchorProvider(
 );
 anchor.setProvider(provider);
 
-const program = anchor.workspace.profiles as Program;
+// Use the deployed program ID on Gorbchain
+const programId = new PublicKey("GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ");
+const program = new anchor.Program(
+  {
+    version: "0.1.0",
+    name: "profiles", 
+    instructions: [
+      {
+        name: "createProfile",
+        accounts: [
+          { name: "authority", isMut: true, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false },
+          { name: "reverse", isMut: true, isSigner: false },
+          { name: "systemProgram", isMut: false, isSigner: false }
+        ],
+        args: [
+          { name: "username", type: "string" },
+          { name: "bio", type: { option: "string" } },
+          { name: "avatar", type: { option: "string" } },
+          { name: "twitter", type: { option: "string" } },
+          { name: "discord", type: { option: "string" } },
+          { name: "website", type: { option: "string" } }
+        ]
+      },
+      {
+        name: "setAuthority",
+        accounts: [
+          { name: "authority", isMut: false, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false }
+        ],
+        args: [
+          { name: "newAuthority", type: "publicKey" }
+        ]
+      },
+      {
+        name: "setProfileDetails",
+        accounts: [
+          { name: "authority", isMut: false, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false }
+        ],
+        args: [
+          { name: "bio", type: { option: "string" } },
+          { name: "avatar", type: { option: "string" } },
+          { name: "twitter", type: { option: "string" } },
+          { name: "discord", type: { option: "string" } },
+          { name: "website", type: { option: "string" } }
+        ]
+      }
+    ],
+    accounts: [
+      {
+        name: "Profile",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "authority", type: "publicKey" },
+            { name: "mainAddress", type: "publicKey" },
+            { name: "bump", type: "u8" },
+            { name: "username", type: "string" },
+            { name: "bio", type: "string" },
+            { name: "avatar", type: "string" },
+            { name: "twitter", type: "string" },
+            { name: "discord", type: "string" },
+            { name: "website", type: "string" }
+          ]
+        }
+      },
+      {
+        name: "ReverseLookup",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "username", type: "string" },
+            { name: "bump", type: "u8" }
+          ]
+        }
+      }
+    ],
+    events: [],
+    errors: [],
+    metadata: { address: "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ" }
+  } as any,
+  programId,
+  provider
+);
 
 // Helper functions for PDA derivation
 const profilePda = (username: string) =>
@@ -153,7 +237,7 @@ async function testTransferAuthorityHappyPath() {
   console.log("✅ Authority transferred:", tx);
   
   // Verify changes
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Profile after authority transfer:", {
     username: profile.username,
     authority: profile.authority.toString(),
@@ -171,7 +255,7 @@ async function testTransferAuthorityHappyPath() {
   }
   
   // Get the actual profile to verify the username
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   
   // Verify username unchanged
@@ -223,7 +307,7 @@ async function testVerifyNewAuthorityCanUpdate() {
   console.log("✅ Profile updated by new authority:", updateTx);
   
   // Verify update was successful
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.bio !== newBio) {
     throw new Error("Profile not updated by new authority");
   }
@@ -280,7 +364,7 @@ async function testOldAuthorityCannotUpdate() {
   }
   
   // Verify profile was not actually changed
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.bio === "Hacked by old authority") {
     throw new Error("Profile was updated by old authority");
   }
@@ -315,7 +399,7 @@ async function testTransferAuthorityMultipleTimes() {
   console.log("✅ First transfer completed:", tx1);
   
   // Verify first transfer
-  let profile = await program.account.profile.fetch(profilePDA);
+  let profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.authority.toString() !== other.publicKey.toString()) {
     throw new Error("First authority transfer failed");
   }
@@ -334,7 +418,7 @@ async function testTransferAuthorityMultipleTimes() {
   console.log("✅ Second transfer completed:", tx2);
   
   // Verify second transfer
-  profile = await program.account.profile.fetch(profilePDA);
+  profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.authority.toString() !== thirdParty.publicKey.toString()) {
     throw new Error("Second authority transfer failed");
   }
@@ -388,7 +472,7 @@ async function testTransferAuthorityByNonAuthority() {
   }
   
   // Verify profile was not actually changed
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.authority.toString() !== testOwner.publicKey.toString()) {
     throw new Error("Authority was transferred by non-authority");
   }
@@ -423,7 +507,7 @@ async function testTransferAuthorityToSameAuthority() {
   console.log("✅ Same authority transfer completed:", tx);
   
   // Verify profile unchanged
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.authority.toString() !== currentAuthority.toString()) {
     throw new Error("Authority changed unexpectedly");
   }

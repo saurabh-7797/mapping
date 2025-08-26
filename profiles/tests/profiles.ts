@@ -13,15 +13,154 @@ const connection = new Connection(RPC_ENDPOINT, {
 
 describe("profile_ns", () => {
   // Configure the client to use the Gorbagan chain
+  const wallet = anchor.AnchorProvider.env().wallet || new anchor.Wallet(Keypair.generate());
   const provider = new anchor.AnchorProvider(
     connection,
-    anchor.AnchorProvider.env().wallet,
+    wallet,
     { commitment: 'confirmed' }
   );
   anchor.setProvider(provider);
 
-  // Access the program from workspace - use lowercase "profiles"
-  const program = anchor.workspace.profiles as Program;
+  // Use the deployed program ID on Gorbchain
+  const programId = new PublicKey("GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ");
+  
+  // Create program instance directly with the deployed program ID
+  const program = new anchor.Program(
+    // We'll create a minimal IDL inline since anchor.workspace doesn't work with custom networks
+    {
+      version: "0.1.0",
+      name: "profiles",
+      instructions: [
+        {
+          name: "createProfile",
+          accounts: [
+            { name: "authority", isMut: true, isSigner: true },
+            { name: "profile", isMut: true, isSigner: false },
+            { name: "reverse", isMut: true, isSigner: false },
+            { name: "systemProgram", isMut: false, isSigner: false }
+          ],
+          args: [
+            { name: "username", type: "string" },
+            { name: "bio", type: { option: "string" } },
+            { name: "avatar", type: { option: "string" } },
+            { name: "twitter", type: { option: "string" } },
+            { name: "discord", type: { option: "string" } },
+            { name: "website", type: { option: "string" } }
+          ]
+        },
+        {
+          name: "setProfileDetails",
+          accounts: [
+            { name: "authority", isMut: false, isSigner: true },
+            { name: "profile", isMut: true, isSigner: false }
+          ],
+          args: [
+            { name: "bio", type: { option: "string" } },
+            { name: "avatar", type: { option: "string" } },
+            { name: "twitter", type: { option: "string" } },
+            { name: "discord", type: { option: "string" } },
+            { name: "website", type: { option: "string" } }
+          ]
+        },
+        {
+          name: "setMainAddress",
+          accounts: [
+            { name: "authority", isMut: true, isSigner: true },
+            { name: "profile", isMut: true, isSigner: false },
+            { name: "reverse", isMut: true, isSigner: false },
+            { name: "systemProgram", isMut: false, isSigner: false }
+          ],
+          args: [{ name: "newMain", type: "publicKey" }]
+        },
+        {
+          name: "setAuthority",
+          accounts: [
+            { name: "authority", isMut: false, isSigner: true },
+            { name: "profile", isMut: true, isSigner: false }
+          ],
+          args: [{ name: "newAuthority", type: "publicKey" }]
+        },
+        {
+          name: "setAddressMapping",
+          accounts: [
+            { name: "authority", isMut: true, isSigner: true },
+            { name: "profile", isMut: false, isSigner: false },
+            { name: "mapping", isMut: true, isSigner: false },
+            { name: "systemProgram", isMut: false, isSigner: false }
+          ],
+          args: [
+            { name: "addressType", type: "string" },
+            { name: "target", type: "publicKey" },
+            { name: "typeHint", type: "u8" }
+          ]
+        },
+        {
+          name: "getAddressMapping",
+          accounts: [
+            { name: "profile", isMut: false, isSigner: false },
+            { name: "mapping", isMut: false, isSigner: false }
+          ],
+          args: []
+        },
+        {
+          name: "clearAddressMapping",
+          accounts: [
+            { name: "authority", isMut: true, isSigner: true },
+            { name: "profile", isMut: false, isSigner: false },
+            { name: "mapping", isMut: true, isSigner: false }
+          ],
+          args: []
+        }
+      ],
+      accounts: [
+        {
+          name: "Profile",
+          type: {
+            kind: "struct",
+            fields: [
+              { name: "authority", type: "publicKey" },
+              { name: "mainAddress", type: "publicKey" },
+              { name: "bump", type: "u8" },
+              { name: "username", type: "string" },
+              { name: "bio", type: "string" },
+              { name: "avatar", type: "string" },
+              { name: "twitter", type: "string" },
+              { name: "discord", type: "string" },
+              { name: "website", type: "string" }
+            ]
+          }
+        },
+        {
+          name: "AddressMapping",
+          type: {
+            kind: "struct",
+            fields: [
+              { name: "profile", type: "publicKey" },
+              { name: "bump", type: "u8" },
+              { name: "addressType", type: "string" },
+              { name: "target", type: "publicKey" },
+              { name: "extraTag", type: "u8" }
+            ]
+          }
+        },
+        {
+          name: "ReverseLookup",
+          type: {
+            kind: "struct",
+            fields: [
+              { name: "username", type: "string" },
+              { name: "bump", type: "u8" }
+            ]
+          }
+        }
+      ],
+      events: [],
+      errors: [],
+      metadata: { address: "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ" }
+    } as any,
+    programId,
+    provider
+  );
 
   // Helpers to derive PDAs the same way as the program
   const profilePda = (username: string) =>

@@ -25,7 +25,79 @@ const provider = new anchor.AnchorProvider(
 );
 anchor.setProvider(provider);
 
-const program = anchor.workspace.profiles as Program;
+// Use the deployed program ID on Gorbchain
+const programId = new PublicKey("GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ");
+const program = new anchor.Program(
+  {
+    version: "0.1.0",
+    name: "profiles", 
+    instructions: [
+      {
+        name: "createProfile",
+        accounts: [
+          { name: "authority", isMut: true, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false },
+          { name: "reverse", isMut: true, isSigner: false },
+          { name: "systemProgram", isMut: false, isSigner: false }
+        ],
+        args: [
+          { name: "username", type: "string" },
+          { name: "bio", type: { option: "string" } },
+          { name: "avatar", type: { option: "string" } },
+          { name: "twitter", type: { option: "string" } },
+          { name: "discord", type: { option: "string" } },
+          { name: "website", type: { option: "string" } }
+        ]
+      },
+      {
+        name: "setMainAddress",
+        accounts: [
+          { name: "authority", isMut: true, isSigner: true },
+          { name: "profile", isMut: true, isSigner: false },
+          { name: "reverse", isMut: true, isSigner: false },
+          { name: "systemProgram", isMut: false, isSigner: false }
+        ],
+        args: [
+          { name: "newMain", type: "publicKey" }
+        ]
+      }
+    ],
+    accounts: [
+      {
+        name: "Profile",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "authority", type: "publicKey" },
+            { name: "mainAddress", type: "publicKey" },
+            { name: "bump", type: "u8" },
+            { name: "username", type: "string" },
+            { name: "bio", type: "string" },
+            { name: "avatar", type: "string" },
+            { name: "twitter", type: "string" },
+            { name: "discord", type: "string" },
+            { name: "website", type: "string" }
+          ]
+        }
+      },
+      {
+        name: "ReverseLookup",
+        type: {
+          kind: "struct",
+          fields: [
+            { name: "username", type: "string" },
+            { name: "bump", type: "u8" }
+          ]
+        }
+      }
+    ],
+    events: [],
+    errors: [],
+    metadata: { address: "GrJrqEtxztquco6Zsg9WfrArYwy5BZwzJ4ce4TfcJLuJ" }
+  } as any,
+  programId,
+  provider
+);
 
 // Helper functions for PDA derivation
 const profilePda = (username: string) =>
@@ -54,7 +126,7 @@ const discord = "test#1234";
 const website = "https://test.example";
 
 // Utility function to fund test accounts
-async function fundTestAccount(publicKey: PublicKey, amount = 1e8) {
+async function fundTestAccount(publicKey: PublicKey, amount = 1.5e8) {
   try {
     // Try airdrop first
     await provider.connection.requestAirdrop(publicKey, amount);
@@ -156,7 +228,7 @@ async function testChangeMainAddressHappyPath() {
   console.log("✅ Main address changed:", tx);
   
   // Verify changes
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   console.log("Profile after main address change:", {
     username: profile.username,
     authority: profile.authority.toString(),
@@ -174,10 +246,10 @@ async function testChangeMainAddressHappyPath() {
   }
   
   // Verify new reverse lookup created
-  const reverse = await program.account.reverseLookup.fetch(newReversePDA);
+  const reverse = await program.account.reverseLookup.fetch(newReversePDA) as any;
   console.log("New reverse lookup:", reverse.username);
   
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   if (reverse.username !== actualUsername) {
     throw new Error("New reverse lookup username mismatch");
@@ -186,7 +258,7 @@ async function testChangeMainAddressHappyPath() {
   // Verify old reverse lookup still exists (not automatically cleaned)
   try {
     const [oldReversePDA] = reversePda(testOwner.publicKey);
-    const oldReverse = await program.account.reverseLookup.fetch(oldReversePDA);
+    const oldReverse = await program.account.reverseLookup.fetch(oldReversePDA) as any;
     console.log("Old reverse lookup still exists:", oldReverse.username);
     
     if (oldReverse.username !== actualUsername) {
@@ -246,7 +318,7 @@ async function testChangeMainAddressByNonAuthority() {
   }
   
   // Verify profile was not actually changed
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.mainAddress.toString() === newMainWallet.publicKey.toString()) {
     throw new Error("Main address was changed by non-authority");
   }
@@ -287,7 +359,7 @@ async function testChangeMainAddressMultipleTimes() {
   console.log("✅ First change completed:", tx1);
   
   // Verify first change
-  let profile = await program.account.profile.fetch(profilePDA);
+  let profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.mainAddress.toString() !== firstNewMain.publicKey.toString()) {
     throw new Error("First main address change failed");
   }
@@ -311,16 +383,16 @@ async function testChangeMainAddressMultipleTimes() {
   console.log("✅ Second change completed:", tx2);
   
   // Verify second change
-  profile = await program.account.profile.fetch(profilePDA);
+  profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.mainAddress.toString() !== secondNewMain.publicKey.toString()) {
     throw new Error("Second main address change failed");
   }
   
   // Verify all reverse lookups exist
-  const firstReverse = await program.account.reverseLookup.fetch(firstReversePDA);
-  const secondReverse = await program.account.reverseLookup.fetch(secondReversePDA);
+  const firstReverse = await program.account.reverseLookup.fetch(firstReversePDA) as any;
+  const secondReverse = await program.account.reverseLookup.fetch(secondReversePDA) as any;
   
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   if (firstReverse.username !== actualUsername) throw new Error("First reverse lookup corrupted");
   if (secondReverse.username !== actualUsername) throw new Error("Second reverse lookup corrupted");
@@ -342,7 +414,7 @@ async function testChangeMainAddressToSameAddress() {
   await fundTestAccount(testOwner.publicKey, 2e8);
   
   // Get current main address
-  const currentProfile = await program.account.profile.fetch(profilePDA);
+  const currentProfile = await program.account.profile.fetch(profilePDA) as any;
   const currentMainAddress = currentProfile.mainAddress as PublicKey;
   
   console.log("Current main address:", currentMainAddress.toString());
@@ -365,14 +437,14 @@ async function testChangeMainAddressToSameAddress() {
   console.log("✅ Same address change completed:", tx);
   
   // Verify profile unchanged
-  const profile = await program.account.profile.fetch(profilePDA);
+  const profile = await program.account.profile.fetch(profilePDA) as any;
   if (profile.mainAddress.toString() !== currentMainAddress.toString()) {
     throw new Error("Main address changed unexpectedly");
   }
   
   // Verify reverse lookup exists
-  const reverse = await program.account.reverseLookup.fetch(sameReversePDA);
-  const actualProfile = await program.account.profile.fetch(profilePDA);
+  const reverse = await program.account.reverseLookup.fetch(sameReversePDA) as any;
+  const actualProfile = await program.account.profile.fetch(profilePDA) as any;
   const actualUsername = actualProfile.username;
   if (reverse.username !== actualUsername) {
     throw new Error("Reverse lookup username mismatch");
